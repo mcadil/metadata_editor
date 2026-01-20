@@ -404,14 +404,14 @@ class FileService:
     def rename_file(self, book: BookFile, new_name: str) -> Path:
         """Rename file and return new path."""
         new_path = book.path.parent / new_name
-        
+
         # Check if path would be too long (Windows MAX_PATH limit)
         if len(str(new_path)) > 259:
             raise ValueError(
                 f"Path too long ({len(str(new_path))} characters). "
                 f"Windows limit is 260. Try shortening the title or author."
             )
-        
+
         book.path.rename(new_path)
         book.path = new_path
         return new_path
@@ -525,11 +525,11 @@ class FilenameParser:
         """Generate filename from metadata."""
         title = self._sanitize_filename(metadata.title) or "Untitled"
         author = self._sanitize_filename(metadata.author)
-        
+
         # Truncate author if it contains multiple authors (usually separated by &, and, or ,)
         if author and len(author) > 50:
             # Keep only first author if multiple
-            for sep in [' & ', ', ', ' and ']:
+            for sep in [" & ", ", ", " and "]:
                 if sep in author:
                     author = author.split(sep)[0].strip()
                     break
@@ -544,14 +544,16 @@ class FilenameParser:
                 name = f"{title}{separator}{author}"
         else:
             name = title
-        
+
         # Ensure total filename length doesn't exceed max_length
         max_name_length = max_length - len(extension)
         if len(name) > max_name_length:
             # Calculate how much to keep
             if author:
                 # Try to keep both title and author, but truncate title first
-                available = max_name_length - len(author) - len(separator) - 3  # 3 for "..."
+                available = (
+                    max_name_length - len(author) - len(separator) - 3
+                )  # 3 for "..."
                 if available > 20:  # Minimum reasonable title length
                     title_truncated = title[:available] + "..."
                     if author_first:
@@ -560,10 +562,10 @@ class FilenameParser:
                         name = f"{title_truncated}{separator}{author}"
                 else:
                     # Not enough room, use title only and truncate
-                    name = title[:max_name_length - 3] + "..."
+                    name = title[: max_name_length - 3] + "..."
             else:
                 # Title only, just truncate
-                name = name[:max_name_length - 3] + "..."
+                name = name[: max_name_length - 3] + "..."
 
         return f"{name}{extension}"
 
@@ -818,6 +820,7 @@ class MetadataEditorApp:
         self.current_book: Optional[BookFile] = None
         self._loading_files = False  # Track when batch loading
         self._pending_files_count = 0  # Track pending loads
+
     def _init_services(self):
         """Initialize all services."""
         # Create handler registry
@@ -1156,15 +1159,16 @@ class MetadataEditorApp:
         """Load multiple files."""
         # Filter out already loaded files
         new_paths = [p for p in paths if p not in self.books]
-        
+
         if not new_paths:
             return
-        
+
         self._set_status(f"Loading {len(new_paths)} files...")
         self._loading_files = True
         self._pending_files_count = len(new_paths)
 
         for path in new_paths:
+
             def load(p=path):
                 return self.file_service.load_file(p)
 
@@ -1172,7 +1176,7 @@ class MetadataEditorApp:
                 self.books[p] = book
                 self._add_file_item(book)
                 self._pending_files_count -= 1
-                
+
                 # Only sort when all files are loaded
                 if self._pending_files_count == 0:
                     self._loading_files = False
@@ -1180,9 +1184,7 @@ class MetadataEditorApp:
                     self._update_file_count()
                     self._set_status(f"Loaded {len(new_paths)} files")
 
-            self.worker.submit(
-                load, on_complete, lambda e: self._show_error(str(e))
-            )
+            self.worker.submit(load, on_complete, lambda e: self._show_error(str(e)))
 
     def _add_file_item(self, book: BookFile):
         """Add file item to the list."""
@@ -1194,7 +1196,7 @@ class MetadataEditorApp:
         )
         # Don't pack yet, will be sorted
         self.file_items[book.path] = item
-        
+
         # Only sort immediately if not batch loading
         if not self._loading_files:
             self._sort_file_list()
@@ -1401,7 +1403,7 @@ class MetadataEditorApp:
         """Rename file based on metadata."""
         if not self.current_book:
             return
-        
+
         # Calculate max filename length based on directory path
         dir_path_length = len(str(self.current_book.path.parent))
         # Windows MAX_PATH is 260, leave some margin and account for directory separator
@@ -1409,9 +1411,9 @@ class MetadataEditorApp:
         max_filename_length = min(max_filename_length, 200)  # Cap at 200 for safety
 
         new_name = self.filename_parser.generate_filename(
-            self.current_book.current_metadata, 
+            self.current_book.current_metadata,
             self.current_book.extension,
-            max_length=max_filename_length
+            max_length=max_filename_length,
         )
 
         if new_name == self.current_book.filename:
@@ -1575,18 +1577,18 @@ class MetadataEditorApp:
             for book in modified:
                 old_path = book.path
                 item = self.file_items.get(old_path)
-                
+
                 # Calculate max filename length based on directory path
                 dir_path_length = len(str(book.path.parent))
                 max_filename_length = 255 - dir_path_length - 1
                 max_filename_length = min(max_filename_length, 200)
 
                 new_name = self.filename_parser.generate_filename(
-                    book.current_metadata, 
-                    book.extension, 
-                    author_first, 
+                    book.current_metadata,
+                    book.extension,
+                    author_first,
                     separator,
-                    max_filename_length
+                    max_filename_length,
                 )
 
                 if new_name == book.filename:
